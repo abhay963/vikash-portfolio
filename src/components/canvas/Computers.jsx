@@ -3,35 +3,38 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Preload, useGLTF } from "@react-three/drei";
 import CanvasLoader from "../Loader";
 
-const EnergyModel = ({ isMobile, mouse }) => {
+const EnergyModel = ({ mouse }) => {
   const model = useGLTF("/energy_scene/scene.glb");
   const modelRef = useRef();
 
+  // Animate model with mouse
   useFrame(() => {
-    if (!isMobile && modelRef.current) {
-      modelRef.current.rotation.y = mouse.current.x * 0.3;
-      modelRef.current.rotation.x = mouse.current.y * 0.05;
+    if (modelRef.current) {
+      modelRef.current.rotation.y += (mouse.current.x * 0.5 - modelRef.current.rotation.y) * 0.05;
+      modelRef.current.rotation.x += (mouse.current.y * 0.1 - modelRef.current.rotation.x) * 0.05;
+      // Optional: Limit x rotation for natural tilt
+      modelRef.current.rotation.x = Math.max(Math.min(modelRef.current.rotation.x, 0.3), -0.3);
     }
   });
 
   return (
     <mesh>
-      <hemisphereLight intensity={0.1} groundColor='black' />
+      <hemisphereLight intensity={0.15} groundColor='black' />
       <spotLight
-        position={[10, 20, 10]}
-        angle={0.2}
+        position={[10, 30, 15]}
+        angle={0.25}
         penumbra={1}
-        intensity={0.7}
+        intensity={1}
         castShadow
-        shadow-mapSize={512}
+        shadow-mapSize={1024}
       />
-      <pointLight intensity={0.6} />
+      <pointLight intensity={1} />
 
       <primitive
         ref={modelRef}
         object={model.scene}
-        scale={isMobile ? 0.8 : 1.2}
-        position={isMobile ? [0, -1, 0] : [0, -1.2, 0]}
+        scale={1.8}
+        position={[0, -1.5, 0]}
         rotation={[0, 0.5, 0]}
       />
     </mesh>
@@ -42,20 +45,17 @@ const ComputersCanvas = () => {
   const [isMobile, setIsMobile] = useState(false);
   const mouse = useRef({ x: 0, y: 0 });
 
+  // Screen size check
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 768px)");
     setIsMobile(mediaQuery.matches);
 
-    const handleMediaQueryChange = (event) => {
-      setIsMobile(event.matches);
-    };
-
+    const handleMediaQueryChange = (e) => setIsMobile(e.matches);
     mediaQuery.addEventListener("change", handleMediaQueryChange);
-    return () => {
-      mediaQuery.removeEventListener("change", handleMediaQueryChange);
-    };
+    return () => mediaQuery.removeEventListener("change", handleMediaQueryChange);
   }, []);
 
+  // Update mouse coordinates
   const handlePointerMove = (event) => {
     mouse.current = {
       x: (event.clientX / window.innerWidth) * 2 - 1,
@@ -63,17 +63,20 @@ const ComputersCanvas = () => {
     };
   };
 
+  // ❌ Don’t render anything on mobile
+  if (isMobile) return null;
+
   return (
-    <div className="w-full h-full" onPointerMove={handlePointerMove}>
+    <div className='w-full h-full' onPointerMove={handlePointerMove}>
       <Canvas
-        frameloop='demand'
+        frameloop='always'
         shadows
-        dpr={[1, 1.5]}
-        camera={{ position: [8, 3, 10], fov: 30 }}
-        gl={{ antialias: true, preserveDrawingBuffer: true }}
+        dpr={[1, 2]}
+        camera={{ position: [10, 5, 10], fov: 30 }}
+        gl={{ preserveDrawingBuffer: true }}
       >
         <Suspense fallback={<CanvasLoader />}>
-          <EnergyModel isMobile={isMobile} mouse={mouse} />
+          <EnergyModel mouse={mouse} />
         </Suspense>
         <Preload all />
       </Canvas>
